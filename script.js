@@ -1,4 +1,6 @@
-const questions = [    {
+// questions.js - Separating the questions data for better organization
+const questions = [    
+    {
         text: "¿Qué tan de acuerdo estás con la idea de que el Estado debe intervenir en la economía para reducir las desigualdades?",
         options: [
             { label: "Totalmente en desacuerdo", comunismo: 1, socialismo: 2, liberalismo: 1, conservadurismo: 2 },
@@ -199,95 +201,322 @@ const questions = [    {
         ]
     }
 ];
-let currentQuestionIndex = 0;
-const results = { comunismo: 0, socialismo: 0, liberalismo: 0, conservadurismo: 0 };
 
-function displayQuestion(index) {
-    const question = questions[index];
-    const questionContainer = document.querySelector('.question-container');
+// script.js - Lógica de la aplicación
+class PoliticalQuiz {
+    constructor(questions) {
+        // Configuración del test
+        this.questions = questions;
+        this.currentQuestionIndex = 0;
+        this.selectedOptionIndex = null;
+        this.results = { comunismo: 0, socialismo: 0, liberalismo: 0, conservadurismo: 0 };
+        this.colors = {
+            comunismo: '#e74c3c',
+            socialismo: '#3498db',
+            liberalismo: '#9b59b6',
+            conservadurismo: '#f1c40f'
+        };
+        
+        // Elementos DOM
+        this.elements = {
+            questionContainer: document.querySelector('.question-container'),
+            progressBar: document.getElementById('progress-bar'),
+            nextButton: document.getElementById('next-button'),
+            retryButton: document.getElementById('retry'),
+            questionnaireSection: document.getElementById('questionnaire'),
+            resultSection: document.getElementById('result'),
+            resultChart: document.getElementById('result-chart')
+        };
+        
+        // Inicialización
+        this.init();
+    }
     
-    questionContainer.innerHTML = `<h2>${question.text}</h2>`;
+    init() {
+        // Bindear métodos al contexto actual
+        this.displayQuestion = this.displayQuestion.bind(this);
+        this.selectOption = this.selectOption.bind(this);
+        this.goToNextQuestion = this.goToNextQuestion.bind(this);
+        this.resetQuiz = this.resetQuiz.bind(this);
+        this.shareResults = this.shareResults.bind(this);
+        
+        // Event listeners
+        this.elements.nextButton.addEventListener('click', this.goToNextQuestion);
+        this.elements.retryButton.addEventListener('click', this.resetQuiz);
+        
+        // Iniciar test
+        this.resetState();
+        this.displayQuestion(0);
+        this.updateProgressBar();
+    }
     
-    question.options.forEach((option, i) => {
-        const optionElement = document.createElement('div');
-        optionElement.className = 'option';
-        optionElement.textContent = option.label;
-        optionElement.dataset.index = i;
-        optionElement.addEventListener('click', selectOption);
-        questionContainer.appendChild(optionElement);
-    });
-}
-
-function selectOption(event) {
-    const selectedOption = event.target;
-    const index = selectedOption.dataset.index;
-    const question = questions[currentQuestionIndex];
-    const option = question.options[index];
+    resetState() {
+        this.currentQuestionIndex = 0;
+        this.selectedOptionIndex = null;
+        
+        // Reiniciar resultados
+        Object.keys(this.results).forEach(ideology => {
+            this.results[ideology] = 0;
+        });
+    }
     
-    // Remove the 'selected' class from all options
-    document.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+    displayQuestion(index) {
+        const question = this.questions[index];
+        this.selectedOptionIndex = null;
+        
+        // Crear elemento de pregunta
+        this.elements.questionContainer.innerHTML = `
+            <h2 class="question-number">Pregunta ${index + 1} de ${this.questions.length}</h2>
+            <h3 class="question-text">${question.text}</h3>
+            <div class="options-container"></div>
+        `;
+        
+        const optionsContainer = this.elements.questionContainer.querySelector('.options-container');
+        
+        // Crear opciones
+        question.options.forEach((option, i) => {
+            const optionElement = document.createElement('div');
+            optionElement.className = 'option';
+            optionElement.textContent = option.label;
+            optionElement.dataset.index = i;
+            optionElement.addEventListener('click', () => this.selectOption(i, optionElement));
+            optionsContainer.appendChild(optionElement);
+        });
+        
+        // Deshabilitar botón hasta que se seleccione una opción
+        this.elements.nextButton.disabled = true;
+    }
     
-    // Add the 'selected' class to the clicked option
-    selectedOption.classList.add('selected');
+    selectOption(index, optionElement) {
+        // Eliminar selección de todas las opciones
+        document.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+        
+        // Agregar selección a la opción clicada
+        optionElement.classList.add('selected');
+        
+        // Almacenar índice de opción seleccionada
+        this.selectedOptionIndex = index;
+        
+        // Habilitar botón siguiente
+        this.elements.nextButton.disabled = false;
+    }
     
-    // Store the scores
-    for (let ideology in option) {
-        if (ideology !== 'label') {
-            results[ideology] += option[ideology];
+    goToNextQuestion() {
+        if (this.selectedOptionIndex === null) {
+            alert('Por favor, selecciona una opción antes de continuar.');
+            return;
         }
+        
+        // Registrar puntajes para la pregunta actual
+        const question = this.questions[this.currentQuestionIndex];
+        const selectedOption = question.options[this.selectedOptionIndex];
+        
+        // Registrar puntos para cada ideología
+        Object.keys(this.results).forEach(ideology => {
+            if (ideology in selectedOption) {
+                this.results[ideology] += selectedOption[ideology];
+            }
+        });
+        
+        // Avanzar a siguiente pregunta o mostrar resultados
+        this.currentQuestionIndex++;
+        
+        if (this.currentQuestionIndex < this.questions.length) {
+            this.displayQuestion(this.currentQuestionIndex);
+            this.updateProgressBar();
+        } else {
+            this.showResults();
+        }
+    }
+    
+    updateProgressBar() {
+        const percentage = ((this.currentQuestionIndex + 1) / this.questions.length) * 100;
+        this.elements.progressBar.style.width = `${percentage}%`;
+        this.elements.progressBar.setAttribute('aria-valuenow', percentage);
+    }
+    
+    // Calcular porcentajes normalizados de manera más precisa
+    calculatePercentages() {
+        // Calcular el puntaje máximo posible para cada ideología
+        const maxPossibleScores = {};
+        
+        // Inicializar puntajes máximos
+        Object.keys(this.results).forEach(ideology => {
+            maxPossibleScores[ideology] = 0;
+        });
+        
+        // Calcular el puntaje máximo posible para cada ideología
+        this.questions.forEach(question => {
+            question.options.forEach(option => {
+                Object.keys(this.results).forEach(ideology => {
+                    if (ideology in option) {
+                        // Buscar el puntaje máximo para esta ideología en esta pregunta
+                        const optionScores = question.options.map(o => o[ideology] || 0);
+                        const maxScore = Math.max(...optionScores);
+                        maxPossibleScores[ideology] += maxScore;
+                    }
+                });
+            });
+        });
+        
+        // Calcular porcentajes basados en puntajes máximos posibles
+        const percentages = {};
+        Object.keys(this.results).forEach(ideology => {
+            // Evitar división por cero
+            if (maxPossibleScores[ideology] > 0) {
+                percentages[ideology] = (this.results[ideology] / maxPossibleScores[ideology]) * 100;
+            } else {
+                percentages[ideology] = 0;
+            }
+        });
+        
+        return percentages;
+    }
+    
+    findDominantIdeology() {
+        let dominant = Object.keys(this.results)[0];
+        let maxScore = this.results[dominant];
+        
+        Object.entries(this.results).forEach(([ideology, score]) => {
+            if (score > maxScore) {
+                maxScore = score;
+                dominant = ideology;
+            }
+        });
+        
+        return dominant;
+    }
+    
+    getIdeologyDescription(ideology) {
+        const descriptions = {
+            comunismo: "Tu orientación política se alinea más con ideas comunistas. Tiendes a favorecer un alto nivel de control estatal sobre la economía y consideras la redistribución de la riqueza como una prioridad.",
+            socialismo: "Tus respuestas indican una orientación socialista. Valoras la intervención del Estado para garantizar una distribución más equitativa de los recursos y los derechos colectivos.",
+            liberalismo: "Tu perspectiva política se alinea más con el liberalismo. Tiendes a valorar las libertades individuales, el libre mercado y una limitada intervención estatal.",
+            conservadurismo: "Tus respuestas sugieren una orientación conservadora. Valoras la tradición, la estabilidad social y los valores familiares en la formulación de políticas."
+        };
+        
+        return descriptions[ideology] || "No se pudo determinar una orientación política predominante.";
+    }
+    
+    showResults() {
+        this.elements.questionnaireSection.classList.add('hidden');
+        this.elements.resultSection.classList.remove('hidden');
+        
+        const percentages = this.calculatePercentages();
+        const dominantIdeology = this.findDominantIdeology();
+        
+        // Eliminar detalles de resultados anteriores
+        const existingResultDetails = document.querySelector('.result-details');
+        if (existingResultDetails) {
+            existingResultDetails.remove();
+        }
+        
+        // Eliminar botón de compartir existente
+        const existingShareButton = document.getElementById('share-results');
+        if (existingShareButton) {
+            existingShareButton.remove();
+        }
+        
+        // Crear sección de resultados detallados
+        const resultDetails = document.createElement('div');
+        resultDetails.className = 'result-details';
+        resultDetails.innerHTML = `
+            <h3>Tu orientación política predominante:</h3>
+            <h2 class="dominant-ideology">${this.capitalizeFirstLetter(dominantIdeology)}</h2>
+            <p class="ideology-description">${this.getIdeologyDescription(dominantIdeology)}</p>
+        `;
+        
+        this.elements.resultSection.insertBefore(resultDetails, document.querySelector('.buttons-container'));
+        
+        // Crear y renderizar gráfico
+        const ctx = this.elements.resultChart.getContext('2d');
+        
+        // Verificar si ya existe un gráfico y destruirlo
+        if (window.resultChart) {
+            window.resultChart.destroy();
+        }
+        
+        // Ordenar ideologías por puntuación (de mayor a menor)
+        const sortedIdeologies = Object.keys(percentages).sort((a, b) => percentages[b] - percentages[a]);
+        
+        window.resultChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedIdeologies.map(this.capitalizeFirstLetter),
+                datasets: [{
+                    label: 'Puntaje (%)',
+                    data: sortedIdeologies.map(ideology => Math.round(percentages[ideology])),
+                    backgroundColor: sortedIdeologies.map(ideology => this.colors[ideology]),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.parsed.y}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Botón para compartir resultados
+        const shareButton = document.createElement('button');
+        shareButton.id = 'share-results';
+        shareButton.textContent = 'Compartir Resultados';
+        shareButton.addEventListener('click', this.shareResults);
+        document.querySelector('.buttons-container').appendChild(shareButton);
+    }
+    
+    shareResults() {
+        const dominantIdeology = this.findDominantIdeology();
+        const text = `¡Mi orientación política principal es ${this.capitalizeFirstLetter(dominantIdeology)}! Descubre la tuya en este test de orientación política.`;
+        
+        if (navigator.share) {
+            navigator.share({
+                title: 'Mi Orientación Política',
+                text: text,
+                url: window.location.href
+            })
+            .catch(console.error);
+        } else {
+            // Fallback para navegadores que no soportan Web Share API
+            prompt('Copia este texto para compartir tus resultados:', text);
+        }
+    }
+    
+    resetQuiz() {
+        // Reiniciar estado y comenzar test de nuevo
+        this.resetState();
+        this.displayQuestion(0);
+        this.updateProgressBar();
+        
+        // Mostrar cuestionario, ocultar resultados
+        this.elements.questionnaireSection.classList.remove('hidden');
+        this.elements.resultSection.classList.add('hidden');
+    }
+    
+    capitalizeFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
     }
 }
 
-function showNextQuestion() {
-    currentQuestionIndex++;
-    if (currentQuestionIndex < questions.length) {
-        displayQuestion(currentQuestionIndex);
-        updateProgressBar();
-    } else {
-        showResults();
-    }
-}
-
-function updateProgressBar() {
-    const progressBar = document.getElementById('progress-bar');
-    const percentage = ((currentQuestionIndex + 1) / questions.length) * 100;
-    progressBar.style.width = `${percentage}%`;
-}
-
-function showResults() {
-    document.getElementById('questionnaire').classList.add('hidden');
-    document.getElementById('result').classList.remove('hidden');
-    
-    const ctx = document.getElementById('result-chart').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Comunismo', 'Socialismo', 'Liberalismo', 'Conservadurismo'],
-            datasets: [{
-                label: 'Puntaje',
-                data: [results.comunismo, results.socialismo, results.liberalismo, results.conservadurismo],
-                backgroundColor: ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56']
-            }]
-        }
-    });
-}
-
-function retryQuiz() {
-    currentQuestionIndex = 0;
-    results.comunismo = 0;
-    results.socialismo = 0;
-    results.liberalismo = 0;
-    results.conservadurismo = 0;
-    
-    document.getElementById('questionnaire').classList.remove('hidden');
-    document.getElementById('result').classList.add('hidden');
-    
-    displayQuestion(currentQuestionIndex);
-    updateProgressBar();
-}
-
-document.getElementById('next-button').addEventListener('click', showNextQuestion);
-document.getElementById('retry').addEventListener('click', retryQuiz);
-
-// Initialize the first question
-displayQuestion(currentQuestionIndex);
+// Inicializar la aplicación cuando el DOM está listo
+document.addEventListener('DOMContentLoaded', () => {
+    const quiz = new PoliticalQuiz(questions);
+});

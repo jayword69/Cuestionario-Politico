@@ -3,23 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cuestionario Político</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Test de Orientación Política</title>
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta name="description" content="Descubre tu orientación política con este test que analiza tus tendencias hacia el comunismo, socialismo, liberalismo y conservadurismo.">
 </head>
 <body>
-    <div id="questionnaire">
-        <div class="progress-container">
-            <div id="progress-bar"></div>
+    <header>
+        <h1>Test de Orientación Política</h1>
+        <p>Responde estas preguntas para descubrir tu perfil político</p>
+    </header>
+    
+    <main>
+        <div id="questionnaire">
+            <div class="progress-container" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <div id="progress-bar"></div>
+            </div>
+            <div class="question-container" aria-live="polite"></div>
+            <div class="navigation">
+                <button id="next-button" disabled>Siguiente</button>
+            </div>
         </div>
-        <div class="question-container"></div>
-        <button id="next-button">Siguiente</button>
-    </div>
-    <div id="result" class="hidden">
-        <h2>Resultados</h2>
-        <canvas id="result-chart"></canvas>
-        <button id="retry">Reintentar</button>
-    </div>
+        
+        <div id="result" class="hidden">
+            <h2>Tus Resultados</h2>
+            <div class="chart-container">
+                <canvas id="result-chart"></canvas>
+            </div>
+            <div class="buttons-container">
+                <button id="retry">Volver a Intentar</button>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>© 2025 Test de Orientación Política</p>
+    </footer>
+    
+    <!-- The order of these scripts is important - questions.js must come before script.js -->
     <script src="script.js"></script>
 </body>
 </html>

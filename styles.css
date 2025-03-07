@@ -209,6 +209,14 @@ footer {
         flex-direction: column;
         gap: 1rem;
     }
+
+    .logo{
+    width: auto;
+    height: 50px;
+    margin-left: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
     
     #share-results {
         margin-left: 0;
